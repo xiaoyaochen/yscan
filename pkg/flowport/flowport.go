@@ -15,7 +15,7 @@ import (
 )
 
 var wg sync.WaitGroup
-var wapp *wap.Wappalyzer
+var Wapp *wap.Wappalyzer
 
 type ScanData struct {
 	Ip   string `json:"ip"`
@@ -32,9 +32,8 @@ type ipPort struct {
 	port int
 }
 
-func PortAnalyzerScan(host string, port string, threads int, rate int, timeoutSeconds int, fcount int, technologies string) (*[]ScanData, error) {
+func PortAnalyzerScan(host string, port string, threads int, rate int, timeoutSeconds int, fcount int) (*[]ScanData, error) {
 	var filterIpList []string
-	wapp, _ = wap.InitApp(technologies)
 	hostList, errs := ParseIps(host)
 	for _, err := range errs {
 		if err != nil {
@@ -138,7 +137,7 @@ func AynScan(hosts []string, port_list PortList, threads int, rate int) *[]ScanD
 				<-sema
 				wg.Done()
 			}()
-			singleScanData := SingleTcpScan(host, port, time.Second*30, wapp)
+			singleScanData := SingleTcpScan(host, port, time.Second*30, Wapp)
 			if singleScanData != nil {
 				allScanData = append(allScanData, *singleScanData)
 			}
@@ -170,7 +169,7 @@ func TcpScan(hosts []string, port_list PortList, threads int, timeoutSeconds int
 					<-sema
 					wg.Done()
 				}()
-				singleScanData := SingleTcpScan(host, port, time.Second*time.Duration(timeoutSeconds), wapp)
+				singleScanData := SingleTcpScan(host, port, time.Second*time.Duration(timeoutSeconds), Wapp)
 				if singleScanData != nil {
 					allScanData = append(allScanData, *singleScanData)
 				}

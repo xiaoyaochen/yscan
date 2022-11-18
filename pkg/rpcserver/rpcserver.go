@@ -3,6 +3,7 @@ package rpcserver
 import (
 	"net/http"
 	"yscan/pkg/flowport"
+	"yscan/pkg/wap"
 
 	log "github.com/sirupsen/logrus"
 
@@ -17,6 +18,12 @@ type PortScanArgs struct {
 	Rate           int
 	TimeoutSeconds int
 	FilterCount    int
+}
+type WapArgs struct {
+	Url string
+}
+type WapResults struct {
+	wap.CrawlerData
 }
 
 type PortScanResults struct {
@@ -42,7 +49,15 @@ type PortScanService struct{}
 
 func (h *PortScanService) Scan(r *http.Request, args *PortScanArgs, reply *PortScanResults) error {
 	args.defaultArgs()
-	reply.Data, _ = flowport.PortAnalyzerScan(args.Ip, args.Port, args.Threads, args.Rate, args.TimeoutSeconds, args.FilterCount, "")
+	reply.Data, _ = flowport.PortAnalyzerScan(args.Ip, args.Port, args.Threads, args.Rate, args.TimeoutSeconds, args.FilterCount)
+	log.Infof("success:%s", args.Ip)
+	return nil
+}
+
+func (h *PortScanService) Wap(r *http.Request, args *WapArgs, reply *WapResults) error {
+	reply.URL = args.Url
+	reply.RequestGet(flowport.Wapp, 15, "")
+	log.Infof("success:%s-%s", reply.URL, reply.Title)
 	return nil
 }
 

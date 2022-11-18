@@ -11,6 +11,7 @@ import (
 	"time"
 	"yscan/pkg/flowport"
 	"yscan/pkg/rpcserver"
+	"yscan/pkg/wap"
 
 	jsoniter "github.com/json-iterator/go"
 	log "github.com/sirupsen/logrus"
@@ -45,6 +46,7 @@ func main() {
 	flag.StringVar(&outJson, "json", "", "Out json file")
 	flag.BoolVar(&help, "h", false, "Help")
 	flag.Parse()
+	flowport.Wapp, _ = wap.InitApp(technologies)
 	var Usage = func() {
 		fmt.Fprintln(os.Stderr, "Usage : yscan [options] <-ip>")
 		flag.PrintDefaults()
@@ -63,7 +65,7 @@ func main() {
 			rpcserver.RunRpcServer(rpcaddr)
 		}
 	} else if ip != "" {
-		scanResult, _ = flowport.PortAnalyzerScan(ip, port, threads, rate, timeoutSeconds, filterCount, technologies)
+		scanResult, _ = flowport.PortAnalyzerScan(ip, port, threads, rate, timeoutSeconds, filterCount)
 	} else {
 		fileobj, err := os.Open(file)
 		if err != nil {
@@ -88,7 +90,7 @@ func main() {
 			}
 		}
 		log.Info(lines)
-		scanResult, _ = flowport.PortAnalyzerScan(strings.Join(lines, ","), port, threads, rate, timeoutSeconds, filterCount, technologies)
+		scanResult, _ = flowport.PortAnalyzerScan(strings.Join(lines, ","), port, threads, rate, timeoutSeconds, filterCount)
 	}
 
 	if outJson != "" {
