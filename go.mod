@@ -35,6 +35,7 @@ require (
 
 require (
 	github.com/PuerkitoBio/goquery v1.8.0
+	github.com/gorilla/rpc v1.2.0
 	github.com/json-iterator/go v1.1.11
 	github.com/lcvvvv/gonmap v1.3.4
 	github.com/miekg/dns v1.1.50

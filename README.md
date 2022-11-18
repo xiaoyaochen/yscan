@@ -18,7 +18,15 @@
     go mod tidy
     go build yscan.go
 
+## rpc 调用方式
+    //服务端监听
+    sudo ./yscan -rpcaddr localhost:10000
+    //客户端下发扫描并等待返回
+    curl --location --request POST 'http://localhost:10000/rpc' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{"method":"PortScanService.Scan","params":[{"ip":"192.168.10.1/24"}], "id":1}'
+
 ## 感谢
  - [gonmap](https://github.com/lcvvvv/gonmap)
  - [gomasscan](https://github.com/lcvvvv/gomasscan)
- - [gowap] (https://github.com/unstppbl/gowap)
+ - [gowap](https://github.com/unstppbl/gowap)

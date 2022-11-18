@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 	"yscan/pkg/flowport"
+	"yscan/pkg/rpcserver"
 
 	jsoniter "github.com/json-iterator/go"
 	log "github.com/sirupsen/logrus"
@@ -30,10 +31,11 @@ func main() {
 	var scanResult *[]flowport.ScanData
 	//获取参数
 	var threads, filterCount, timeoutSeconds, rate int
-	var ip, file, technologies, outJson, port string
+	var ip, file, technologies, outJson, port, rpcaddr string
 	var help bool
 	flag.StringVar(&technologies, "technologies", "", "Path to override default technologies.json file")
 	flag.StringVar(&file, "file", "", "Ip file for Scan")
+	flag.StringVar(&rpcaddr, "rpcaddr", "", "rpc listen address")
 	flag.StringVar(&ip, "ip", "", "Ip for Scan")
 	flag.StringVar(&port, "port", "", "Port for Scan,default（top1000）")
 	flag.IntVar(&timeoutSeconds, "timeout", 30, "Timeout in seconds for TCP Scan")
@@ -53,9 +55,13 @@ func main() {
 		os.Exit(1)
 	}
 	if ip == "" && file == "" {
-		fmt.Fprintln(os.Stderr, "You must specify a ips to scan")
-		Usage()
-		os.Exit(1)
+		if rpcaddr == "" {
+			fmt.Fprintln(os.Stderr, "You must specify a ips to scan")
+			Usage()
+			os.Exit(1)
+		} else {
+			rpcserver.RunRpcServer(rpcaddr)
+		}
 	} else if ip != "" {
 		scanResult, _ = flowport.PortAnalyzerScan(ip, port, threads, rate, timeoutSeconds, filterCount, technologies)
 	} else {
