@@ -21,7 +21,7 @@ type CrawlerData struct {
 	Cookies    map[string]string   `json:"-"`
 	Meta       map[string][]string `json:"-"`
 	Title      string              `json:"title,omitempty"`
-	StatusCode int                 `json:"ststus,omitempty"`
+	StatusCode int                 `json:"status_code,omitempty"`
 	ResURL     string              `json:"-"`
 	Apps       []technology        `json:"apps,omitempty"`
 }

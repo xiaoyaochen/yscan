@@ -27,7 +27,7 @@ type WapResults struct {
 }
 
 type PortScanResults struct {
-	Data *[]flowport.ScanData
+	Data *[]flowport.ScanData `json:"data"`
 }
 
 func (p *PortScanArgs) defaultArgs() {
