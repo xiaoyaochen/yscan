@@ -18,9 +18,9 @@ var wg sync.WaitGroup
 var Wapp *wap.Wappalyzer
 
 type ScanData struct {
-	Ip   string `json:"ip"`
-	Port int    `json:"port"`
-	*gonmap.Status
+	Ip             string `json:"ip"`
+	Port           int    `json:"port"`
+	*gonmap.Status `json:"status"`
 	*gonmap.Response
 	*wap.CrawlerData
 	// SslCert *x509.Certificate `json:"sslcert,omitempty"`
@@ -117,7 +117,7 @@ func AynScan(hosts []string, port_list PortList, threads int, rate int) *[]ScanD
 		bar.Add(count_now - count_last)
 		count_last = count_now
 		if count_now == count {
-			time.Sleep(time.Second * 20)
+			time.Sleep(time.Second * 10)
 			break
 		}
 	}

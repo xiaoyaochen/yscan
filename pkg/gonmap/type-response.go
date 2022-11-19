@@ -28,9 +28,9 @@ func (s Status) String() string {
 }
 
 type Response struct {
-	Raw         string
-	TLS         bool
-	FingerPrint *FingerPrint
+	Raw         string       `json:"raw"`
+	TLS         bool         `json:"tls"`
+	FingerPrint *FingerPrint `json:"finger_print"`
 }
 
 var dnsResponse = Response{Raw: "DnsServer", TLS: false,
