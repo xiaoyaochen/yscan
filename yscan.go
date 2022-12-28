@@ -79,6 +79,7 @@ func main() {
 			line = strings.Replace(line, " ", "", -1)
 			// 去除换行符
 			line = strings.Replace(line, "\n", "", -1)
+			line = strings.Replace(line, "\r", "", -1)
 			lines = append(lines, line)
 			if err == io.EOF {
 				log.Infof("Ip file read success!\n")
@@ -89,8 +90,9 @@ func main() {
 				return
 			}
 		}
-		log.Info(lines)
-		scanResult, _ = flowport.PortAnalyzerScan(strings.Join(lines, ","), port, threads, rate, timeoutSeconds, filterCount)
+		ips := strings.Join(lines, ",")
+		log.Infof(ips)
+		scanResult, _ = flowport.PortAnalyzerScan(ips, port, threads, rate, timeoutSeconds, filterCount)
 	}
 
 	if outJson != "" {
