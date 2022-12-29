@@ -32,23 +32,26 @@ type ipPort struct {
 	port int
 }
 
-func PortAnalyzerScan(host string, port string, threads int, rate int, timeoutSeconds int, fcount int) (*[]ScanData, error) {
+func PortAnalyzerScan(host string, port string, threads int, rate int, timeoutSeconds int, fcount int, mode int) (*[]ScanData, error) {
 	var filterIpList []string
+	if port == "" {
+		port = NmapTop1000
+	}
 	hostList, errs := ParseIps(host)
 	for _, err := range errs {
 		if err != nil {
+			log.Errorln(err)
 			return nil, err
 		}
 	}
-	if port == "" {
-		allScanData := *TcpScan(hostList, port_top50, threads, timeoutSeconds)
-		filterIpList = append(filterIpList, *filterIps(&allScanData, fcount)...)
-		log.Infoln("Filter Waf IP:", filterIpList)
-		hostList = *removeIps(hostList, filterIpList)
-		//syn 扫描
-		allScanData = append(allScanData, *AynScan(hostList, parsePortListExclude(NmapTop1000, port_top50), threads, rate)...)
+	//mode == 1 直接无状态扫描
+	if mode == 1 {
+		//无状态扫描
+		scanPort := parsePortList(port)
+		allScanData := *SynScan(hostList, scanPort, threads, rate)
 		return &allScanData, nil
 	} else {
+		//mode 不等于1 先做top50 tcp扫描然后无状态扫描再tcp扫描
 		scanPort := parsePortList(port)
 		if len(scanPort) <= 50 {
 			allScanData := *TcpScan(hostList, scanPort, threads, timeoutSeconds)
@@ -57,15 +60,16 @@ func PortAnalyzerScan(host string, port string, threads int, rate int, timeoutSe
 			allScanData := *TcpScan(hostList, port_top50, threads, timeoutSeconds)
 			filterIpList = append(filterIpList, *filterIps(&allScanData, fcount)...)
 			log.Infoln("Filter Waf IP:", filterIpList)
-			//syn 扫描
+			//无状态扫描
 			hostList = *removeIps(hostList, filterIpList)
-			allScanData = append(allScanData, *AynScan(hostList, parsePortListExclude(port, port_top50), threads, rate)...)
+			allScanData = append(allScanData, *SynScan(hostList, parsePortListExclude(port, port_top50), threads, rate)...)
 			return &allScanData, nil
 		}
+
 	}
 }
 
-func AynScan(hosts []string, port_list PortList, threads int, rate int) *[]ScanData {
+func SynScan(hosts []string, port_list PortList, threads int, rate int) *[]ScanData {
 	sema := make(chan int, threads)
 	client, err := gomasscan.NewScanner()
 	var ipports []ipPort
@@ -109,7 +113,7 @@ func AynScan(hosts []string, port_list PortList, threads int, rate int) *[]ScanD
 	count := len(port_list) * len(hosts)
 	bar := progressbar.NewOptions(count, progressbar.OptionShowIts(),
 		progressbar.OptionShowCount(),
-		progressbar.OptionSetDescription("AYNSCAINING"))
+		progressbar.OptionSetDescription("SYNSCAINING"))
 	count_last := 0
 	for {
 		time.Sleep(time.Second)
@@ -126,7 +130,7 @@ func AynScan(hosts []string, port_list PortList, threads int, rate int) *[]ScanD
 	// wapp, _ := wap.InitApp("")
 	bar = progressbar.NewOptions(len(ipports), progressbar.OptionShowIts(),
 		progressbar.OptionShowCount(),
-		progressbar.OptionSetDescription("AYN-TCPSCAINING"))
+		progressbar.OptionSetDescription("SYN-TCPSCAINING"))
 	for _, ipport := range ipports {
 		sema <- 1
 		port := ipport.port

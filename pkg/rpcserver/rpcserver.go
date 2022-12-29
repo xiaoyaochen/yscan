@@ -18,6 +18,7 @@ type PortScanArgs struct {
 	Rate           int
 	TimeoutSeconds int
 	FilterCount    int
+	Mode           int
 }
 type WapArgs struct {
 	Url string
@@ -49,7 +50,7 @@ type PortScanService struct{}
 
 func (h *PortScanService) Scan(r *http.Request, args *PortScanArgs, reply *PortScanResults) error {
 	args.defaultArgs()
-	reply.Data, _ = flowport.PortAnalyzerScan(args.Ip, args.Port, args.Threads, args.Rate, args.TimeoutSeconds, args.FilterCount)
+	reply.Data, _ = flowport.PortAnalyzerScan(args.Ip, args.Port, args.Threads, args.Rate, args.TimeoutSeconds, args.FilterCount, args.Mode)
 	log.Infof("success:%s", args.Ip)
 	return nil
 }

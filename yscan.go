@@ -31,7 +31,7 @@ func main() {
 	startTime := time.Now()
 	var scanResult *[]flowport.ScanData
 	//获取参数
-	var threads, filterCount, timeoutSeconds, rate int
+	var threads, filterCount, timeoutSeconds, rate, mode int
 	var ip, file, technologies, outJson, port, rpcaddr string
 	var help bool
 	flag.StringVar(&technologies, "technologies", "", "Path to override default technologies.json file")
@@ -42,7 +42,8 @@ func main() {
 	flag.IntVar(&timeoutSeconds, "timeout", 30, "Timeout in seconds for TCP Scan")
 	flag.IntVar(&threads, "threads", 100, "Threads for TCP Scan")
 	flag.IntVar(&filterCount, "fcount", 15, "Ip top50 tcp scan open > fcount to filter")
-	flag.IntVar(&rate, "rate", 1000, "rate for SYN Scan")
+	flag.IntVar(&rate, "rate", 1000, "rate for Asyn Scan (masscan SYN scan)")
+	flag.IntVar(&mode, "mode", 0, "0:default scan(top50 tcp->Async->tcp), 1:Async Scan(Async->tcp)")
 	flag.StringVar(&outJson, "json", "", "Out json file")
 	flag.BoolVar(&help, "h", false, "Help")
 	flag.Parse()
@@ -65,7 +66,7 @@ func main() {
 			rpcserver.RunRpcServer(rpcaddr)
 		}
 	} else if ip != "" {
-		scanResult, _ = flowport.PortAnalyzerScan(ip, port, threads, rate, timeoutSeconds, filterCount)
+		scanResult, _ = flowport.PortAnalyzerScan(ip, port, threads, rate, timeoutSeconds, filterCount, mode)
 	} else {
 		fileobj, err := os.Open(file)
 		if err != nil {
@@ -92,7 +93,7 @@ func main() {
 		}
 		ips := strings.Join(lines, ",")
 		log.Infof(ips)
-		scanResult, _ = flowport.PortAnalyzerScan(ips, port, threads, rate, timeoutSeconds, filterCount)
+		scanResult, _ = flowport.PortAnalyzerScan(ips, port, threads, rate, timeoutSeconds, filterCount, mode)
 	}
 
 	if outJson != "" {
