@@ -300,57 +300,57 @@ func parsePatterns(patterns interface{}) (result map[string][]*pattern) {
 }
 
 func AnalyzePage(crawlerdata *CrawlerData, wapp *Wappalyzer) (err error) {
-	var wg sync.WaitGroup
-	pool := make(chan int, 30)
+	// var wg sync.WaitGroup
+	// pool := make(chan int, 30)
 	detectedApplications := &detected{new(sync.Mutex), make(map[string]*resultApp)}
 	for _, app := range wapp.Apps {
-		// if app.URL != nil {
-		// 	analyzeURL(app, crawlerdata.ResURL, detectedApplications)
-		// }
-		// if app.HTML != nil {
-		// 	analyzeHTML(app, crawlerdata.HTML, detectedApplications)
-		// }
-		// if len(crawlerdata.Headers) > 0 && app.Headers != nil {
-		// 	analyzeHeaders(app, crawlerdata.Headers, detectedApplications)
-		// }
-		// if len(crawlerdata.Cookies) > 0 && app.Cookies != nil {
-		// 	analyzeCookies(app, crawlerdata.Cookies, detectedApplications)
-		// }
-		// if len(crawlerdata.Scripts) > 0 && app.Scripts != nil {
-		// 	analyzeScripts(app, crawlerdata.Scripts, detectedApplications)
-		// }
-		// if len(crawlerdata.Meta) > 0 && app.Meta != nil {
-		// 	analyzeMeta(app, crawlerdata.Meta, detectedApplications)
-		// }
-		wg.Add(1)
-		pool <- 1
-		go func(app *application) {
-			defer wg.Done()
-			defer func() {
-				<-pool
-			}()
-			if app.URL != nil {
-				analyzeURL(app, crawlerdata.ResURL, detectedApplications)
-			}
-			if app.HTML != nil {
-				analyzeHTML(app, crawlerdata.HTML, detectedApplications)
-			}
-			if len(crawlerdata.Headers) > 0 && app.Headers != nil {
-				analyzeHeaders(app, crawlerdata.Headers, detectedApplications)
-			}
-			if len(crawlerdata.Cookies) > 0 && app.Cookies != nil {
-				analyzeCookies(app, crawlerdata.Cookies, detectedApplications)
-			}
-			if len(crawlerdata.Scripts) > 0 && app.Scripts != nil {
-				analyzeScripts(app, crawlerdata.Scripts, detectedApplications)
-			}
-			if len(crawlerdata.Meta) > 0 && app.Meta != nil {
-				analyzeMeta(app, crawlerdata.Meta, detectedApplications)
-			}
-		}(app)
+		if app.URL != nil {
+			analyzeURL(app, crawlerdata.ResURL, detectedApplications)
+		}
+		if app.HTML != nil {
+			analyzeHTML(app, crawlerdata.HTML, detectedApplications)
+		}
+		if len(crawlerdata.Headers) > 0 && app.Headers != nil {
+			analyzeHeaders(app, crawlerdata.Headers, detectedApplications)
+		}
+		if len(crawlerdata.Cookies) > 0 && app.Cookies != nil {
+			analyzeCookies(app, crawlerdata.Cookies, detectedApplications)
+		}
+		if len(crawlerdata.Scripts) > 0 && app.Scripts != nil {
+			analyzeScripts(app, crawlerdata.Scripts, detectedApplications)
+		}
+		if len(crawlerdata.Meta) > 0 && app.Meta != nil {
+			analyzeMeta(app, crawlerdata.Meta, detectedApplications)
+		}
+		// 	wg.Add(1)
+		// 	pool <- 1
+		// 	go func(app *application) {
+		// 		defer wg.Done()
+		// 		defer func() {
+		// 			<-pool
+		// 		}()
+		// 		if app.URL != nil {
+		// 			analyzeURL(app, crawlerdata.ResURL, detectedApplications)
+		// 		}
+		// 		if app.HTML != nil {
+		// 			analyzeHTML(app, crawlerdata.HTML, detectedApplications)
+		// 		}
+		// 		if len(crawlerdata.Headers) > 0 && app.Headers != nil {
+		// 			analyzeHeaders(app, crawlerdata.Headers, detectedApplications)
+		// 		}
+		// 		if len(crawlerdata.Cookies) > 0 && app.Cookies != nil {
+		// 			analyzeCookies(app, crawlerdata.Cookies, detectedApplications)
+		// 		}
+		// 		if len(crawlerdata.Scripts) > 0 && app.Scripts != nil {
+		// 			analyzeScripts(app, crawlerdata.Scripts, detectedApplications)
+		// 		}
+		// 		if len(crawlerdata.Meta) > 0 && app.Meta != nil {
+		// 			analyzeMeta(app, crawlerdata.Meta, detectedApplications)
+		// 		}
+		// 	}(app)
 	}
 
-	wg.Wait()
+	// wg.Wait()
 
 	for _, app := range detectedApplications.Apps {
 		if app.excludes != nil {

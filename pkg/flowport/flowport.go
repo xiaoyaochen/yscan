@@ -1,6 +1,7 @@
 package flowport
 
 import (
+	"context"
 	"strconv"
 	"strings"
 	"sync"
@@ -131,6 +132,7 @@ func SynScan(hosts []string, port_list PortList, threads int, rate int) *[]ScanD
 	bar = progressbar.NewOptions(len(ipports), progressbar.OptionShowIts(),
 		progressbar.OptionShowCount(),
 		progressbar.OptionSetDescription("SYN-TCPSCAINING"))
+	withTimeout, cancelFunc := context.WithTimeout(context.Background(), time.Second*3600)
 	for _, ipport := range ipports {
 		sema <- 1
 		port := ipport.port
@@ -148,7 +150,17 @@ func SynScan(hosts []string, port_list PortList, threads int, rate int) *[]ScanD
 		}()
 		wg.Add(1)
 	}
-	wg.Wait()
+	go func() { //协程监听以上协程是否完成
+		select {
+		case <-withTimeout.Done(): //part1
+			return //结束监听协程
+		default: //part2 等待协程1、协程2执行完毕，执行完毕后就手动取消上下文，停止阻塞
+			wg.Wait()
+			cancelFunc()
+			return //结束监听协程
+		}
+	}()
+	<-withTimeout.Done()
 	return &allScanData
 
 }
@@ -161,6 +173,7 @@ func TcpScan(hosts []string, port_list PortList, threads int, timeoutSeconds int
 	bar := progressbar.NewOptions(count, progressbar.OptionShowIts(),
 		progressbar.OptionShowCount(),
 		progressbar.OptionSetDescription("TCPSCAINING"))
+	withTimeout, cancelFunc := context.WithTimeout(context.Background(), time.Second*3600)
 	for _, port := range port_list {
 		for _, host := range hosts {
 			sema <- 1
@@ -181,7 +194,17 @@ func TcpScan(hosts []string, port_list PortList, threads int, timeoutSeconds int
 			wg.Add(1)
 		}
 	}
-	wg.Wait()
+	go func() { //协程监听以上协程是否完成
+		select {
+		case <-withTimeout.Done(): //part1
+			return //结束监听协程
+		default: //part2 等待协程1、协程2执行完毕，执行完毕后就手动取消上下文，停止阻塞
+			wg.Wait()
+			cancelFunc()
+			return //结束监听协程
+		}
+	}()
+	<-withTimeout.Done()
 	return &allScanData
 }
 
