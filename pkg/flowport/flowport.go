@@ -83,7 +83,10 @@ func SynScan(hosts []string, port_list PortList, threads int, rate int) *[]ScanD
 	//开放端口处理函数
 	client.HandlerOpen = func(ip string, port int) {
 		//输出开放端口
-		ipports = append(ipports, ipPort{ip, port})
+		ipport := ipPort{ip, port}
+		if !IsContain(ipports, ipport) {
+			ipports = append(ipports, ipport)
+		}
 	}
 	//将IP地址加入筛选范围内
 	for _, host := range hosts {
@@ -263,4 +266,13 @@ func SingleTcpScan(host string, port int, timeout time.Duration, wapp *wap.Wappa
 		}
 	}
 	return nil
+}
+
+func IsContain(items []ipPort, item ipPort) bool {
+	for _, eachItem := range items {
+		if eachItem == item {
+			return true
+		}
+	}
+	return false
 }
