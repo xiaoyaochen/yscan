@@ -1,19 +1,13 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"os"
-	"strings"
 	"time"
 	"yscan/pkg/flowport"
 	"yscan/pkg/rpcserver"
-	"yscan/pkg/wap"
 
-	jsoniter "github.com/json-iterator/go"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -29,82 +23,46 @@ ___.__.  ______  ____  _____     ____
 func main() {
 	fmt.Printf(logo)
 	startTime := time.Now()
-	var scanResult *[]flowport.ScanData
 	//获取参数
-	var threads, filterCount, timeoutSeconds, rate, mode int
-	var ip, file, technologies, outJson, port, rpcaddr string
+	var runner flowport.Runner
 	var help bool
-	flag.StringVar(&technologies, "technologies", "", "Path to override default technologies.json file")
-	flag.StringVar(&file, "file", "", "Ip file for Scan")
-	flag.StringVar(&rpcaddr, "rpcaddr", "", "rpc listen address")
-	flag.StringVar(&ip, "ip", "", "Ip for Scan")
-	flag.StringVar(&port, "port", "", "Port for Scan,default（top1000）")
-	flag.IntVar(&timeoutSeconds, "timeout", 30, "Timeout in seconds for TCP Scan")
-	flag.IntVar(&threads, "threads", 100, "Threads for TCP Scan")
-	flag.IntVar(&filterCount, "fcount", 15, "Ip top50 tcp scan open > fcount to filter")
-	flag.IntVar(&rate, "rate", 1000, "rate for Asyn Scan (masscan SYN scan)")
-	flag.IntVar(&mode, "mode", 0, "0:default scan(top50 tcp->Async->tcp), 1:Async Scan(Async->tcp)")
-	flag.StringVar(&outJson, "json", "", "Out json file")
+	flag.StringVar(&runner.Technologies, "technologies", "", "Path to override default technologies.json file")
+	flag.StringVar(&runner.File, "file", "", "Ip file for Scan")
+	flag.StringVar(&runner.Rpcaddr, "rpcaddr", "", "rpc listen address")
+	flag.StringVar(&runner.Ip, "ip", "", "Ip for Scan")
+	flag.StringVar(&runner.Port, "port", "", "Port for Scan,default（top1000）")
+	flag.IntVar(&runner.TimeoutSeconds, "timeout", 30, "Timeout in seconds for TCP Scan")
+	flag.IntVar(&runner.Threads, "threads", 100, "Threads for TCP Scan")
+	flag.IntVar(&runner.FilterCount, "fcount", 15, "Ip top50 tcp scan open > fcount to filter")
+	flag.IntVar(&runner.Rate, "rate", 1000, "rate for Asyn Scan (masscan SYN scan)")
+	flag.IntVar(&runner.Mode, "mode", 0, "0:default scan(top50 tcp->Async->tcp), 1:Async Scan(Async->tcp)")
+	flag.StringVar(&runner.OutJson, "json", "", "Out json file")
+	flag.StringVar(&runner.MqUrl, "mq", "", "Out to Mq(redis、rabbitmq)")
 	flag.BoolVar(&help, "h", false, "Help")
 	flag.Parse()
-	flowport.Wapp, _ = wap.InitApp(technologies)
+	//初始化参数
+	runner.InitRunner()
+	//查看帮助
 	var Usage = func() {
 		fmt.Fprintln(os.Stderr, "Usage : yscan [options] <-ip>")
 		flag.PrintDefaults()
 	}
-
 	if help {
 		Usage()
 		os.Exit(1)
 	}
-	if ip == "" && file == "" {
-		if rpcaddr == "" {
+	if runner.Ips == "" {
+		if runner.Rpcaddr == "" {
 			fmt.Fprintln(os.Stderr, "You must specify a ips to scan")
 			Usage()
 			os.Exit(1)
 		} else {
-			rpcserver.RunRpcServer(rpcaddr)
+			rpcserver.RunRpcServer(&runner)
 		}
-	} else if ip != "" {
-		scanResult, _ = flowport.PortAnalyzerScan(ip, port, threads, rate, timeoutSeconds, filterCount, mode)
 	} else {
-		fileobj, err := os.Open(file)
+		_, err := runner.PortAnalyzerScan()
 		if err != nil {
-			fmt.Println("File open err!")
-		}
-		defer fileobj.Close()
-		reader := bufio.NewReader(fileobj)
-		var lines []string
-		for {
-			line, err := reader.ReadString('\n') //注意是字符，换行符。
-			line = strings.Replace(line, " ", "", -1)
-			// 去除换行符
-			line = strings.Replace(line, "\n", "", -1)
-			line = strings.Replace(line, "\r", "", -1)
-			lines = append(lines, line)
-			if err == io.EOF {
-				log.Infof("Ip file read success!\n")
-				break
-			}
-			if err != nil { //错误处理
-				log.Errorf("Ip file read error:%v", err)
-				return
-			}
-		}
-		ips := strings.Join(lines, ",")
-		log.Infof(ips)
-		scanResult, _ = flowport.PortAnalyzerScan(ips, port, threads, rate, timeoutSeconds, filterCount, mode)
-	}
-
-	if outJson != "" {
-		out, err := jsoniter.Marshal(scanResult)
-		if err != nil {
-			fmt.Println("Json translate fail!")
-			return
-		}
-		err = ioutil.WriteFile(outJson, out, 0644)
-		if err != nil {
-			log.Errorf("Json file write error:%v", err)
+			log.Errorln(err)
 		}
 	}
 

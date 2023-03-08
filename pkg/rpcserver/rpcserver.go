@@ -12,13 +12,14 @@ import (
 )
 
 type PortScanArgs struct {
-	Ip             string
-	Port           string
-	Threads        int
-	Rate           int
-	TimeoutSeconds int
-	FilterCount    int
-	Mode           int
+	*flowport.Runner
+	// Ip             string
+	// Port           string
+	// Threads        int
+	// Rate           int
+	// TimeoutSeconds int
+	// FilterCount    int
+	// Mode           int
 }
 type WapArgs struct {
 	Url string
@@ -31,7 +32,9 @@ type PortScanResults struct {
 	Data *[]flowport.ScanData `json:"data"`
 }
 
-func (p *PortScanArgs) defaultArgs() {
+func (p *PortScanArgs) InitRunner() {
+	p.Wapp = Wapp
+	p.Ips = p.Ip
 	if p.Threads == 0 {
 		p.Threads = 100
 	}
@@ -48,25 +51,28 @@ func (p *PortScanArgs) defaultArgs() {
 
 type PortScanService struct{}
 
+var Wapp *wap.Wappalyzer
+
 func (h *PortScanService) Scan(r *http.Request, args *PortScanArgs, reply *PortScanResults) error {
-	args.defaultArgs()
-	reply.Data, _ = flowport.PortAnalyzerScan(args.Ip, args.Port, args.Threads, args.Rate, args.TimeoutSeconds, args.FilterCount, args.Mode)
+	args.InitRunner()
+	reply.Data, _ = args.PortAnalyzerScan()
 	log.Infof("success:%s", args.Ip)
 	return nil
 }
 
 func (h *PortScanService) Wap(r *http.Request, args *WapArgs, reply *WapResults) error {
 	reply.URL = args.Url
-	reply.RequestGet(flowport.Wapp, 15, "")
+	reply.RequestGet(Wapp, 15, "")
 	log.Infof("success:%s-%s", reply.URL, reply.Title)
 	return nil
 }
 
-func RunRpcServer(addr string) {
-	log.Printf("Starting RPC Server on :%s\n", addr)
+func RunRpcServer(runner *flowport.Runner) {
+	Wapp = runner.Wapp
+	log.Printf("Starting RPC Server on :%s\n", runner.Rpcaddr)
 	s := rpc.NewServer()
 	s.RegisterCodec(json.NewCodec(), "application/json")
 	s.RegisterService(new(PortScanService), "")
 	http.Handle("/rpc", s)
-	http.ListenAndServe(addr, nil)
+	http.ListenAndServe(runner.Rpcaddr, nil)
 }

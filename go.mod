@@ -12,6 +12,8 @@ require (
 
 require (
 	github.com/andybalholm/cascadia v1.3.1 // indirect
+	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/golang/snappy v0.0.3 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db // indirect
@@ -35,12 +37,14 @@ require (
 
 require (
 	github.com/PuerkitoBio/goquery v1.8.0
+	github.com/go-redis/redis/v8 v8.11.5
 	github.com/gorilla/rpc v1.2.0
 	github.com/json-iterator/go v1.1.11
 	github.com/lcvvvv/gonmap v1.3.4
 	github.com/miekg/dns v1.1.50
 	github.com/schollz/progressbar/v3 v3.12.1
 	github.com/sirupsen/logrus v1.9.0
+	github.com/streadway/amqp v1.0.0
 	github.com/yinheli/mahonia v0.0.0-20131226213531-0eef680515cc
 	golang.org/x/net v0.0.0-20210916014120-12bc252f5db8
 )
