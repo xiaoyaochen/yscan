@@ -51,7 +51,7 @@ func (r *Runner) InitRunner() {
 	}
 	if r.Ip != "" {
 		r.Ips = r.Ip
-	} else {
+	} else if r.File != "" {
 		fileobj, err := os.Open(r.File)
 		if err != nil {
 			fmt.Println("File open err!")
@@ -81,7 +81,11 @@ func (r *Runner) InitRunner() {
 }
 
 func (r *Runner) PortAnalyzerScan() (*[]ScanData, error) {
-	defer r.Mq.Close()
+	defer func() {
+		if r.MqUrl != "" {
+			r.Mq.Close()
+		}
+	}()
 	var filterIpList []string
 	if r.Port == "" {
 		r.Port = NmapTop1000
