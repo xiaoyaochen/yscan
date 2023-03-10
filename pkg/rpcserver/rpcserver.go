@@ -3,6 +3,7 @@ package rpcserver
 import (
 	"net/http"
 	"yscan/pkg/flowport"
+	"yscan/pkg/mq"
 	"yscan/pkg/wap"
 
 	log "github.com/sirupsen/logrus"
@@ -46,6 +47,9 @@ func (p *PortScanArgs) InitRunner() {
 	}
 	if p.FilterCount == 0 {
 		p.FilterCount = 15
+	}
+	if p.MqUrl != "" {
+		p.Mq = mq.NewMqProducer("portscan", p.MqUrl)
 	}
 }
 
