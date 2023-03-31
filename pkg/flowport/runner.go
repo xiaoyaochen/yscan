@@ -90,7 +90,7 @@ func (r *Runner) PortAnalyzerScan() (*[]ScanData, error) {
 	if r.Port == "" {
 		r.Port = NmapTop1000
 	}
-	hostList, errs := ParseIps(r.Ips)
+	hostList, domainIpMap, errs := ParseIps(r.Ips)
 	for _, err := range errs {
 		if err != nil {
 			log.Errorln(err)
@@ -102,6 +102,7 @@ func (r *Runner) PortAnalyzerScan() (*[]ScanData, error) {
 		//无状态扫描
 		scanPort := parsePortList(r.Port)
 		allScanData := *r.SynScan(hostList, scanPort)
+		r.DomainScan(&domainIpMap, &allScanData)
 		r.OutPortScanJson(&allScanData)
 		return &allScanData, nil
 	} else {
@@ -109,6 +110,7 @@ func (r *Runner) PortAnalyzerScan() (*[]ScanData, error) {
 		scanPort := parsePortList(r.Port)
 		if len(scanPort) <= 50 {
 			allScanData := *r.TcpScan(hostList, scanPort)
+			r.DomainScan(&domainIpMap, &allScanData)
 			r.OutPortScanJson(&allScanData)
 			return &allScanData, nil
 		} else {
@@ -118,6 +120,7 @@ func (r *Runner) PortAnalyzerScan() (*[]ScanData, error) {
 			//无状态扫描
 			hostList = *removeIps(hostList, filterIpList)
 			allScanData = append(allScanData, *r.SynScan(hostList, parsePortListExclude(r.Port, port_top50))...)
+			r.DomainScan(&domainIpMap, &allScanData)
 			r.OutPortScanJson(&allScanData)
 			return &allScanData, nil
 		}
@@ -193,7 +196,7 @@ func (r *Runner) SynScan(hosts []string, port_list PortList) *[]ScanData {
 				<-sema
 				wg.Done()
 			}()
-			singleScanData := r.SingleTcpScan(host, port)
+			singleScanData := r.SingleTcpScan(host, host, port)
 			if singleScanData != nil {
 				allScanData = append(allScanData, *singleScanData)
 			}
@@ -236,7 +239,7 @@ func (r *Runner) TcpScan(hosts []string, port_list PortList) *[]ScanData {
 					<-sema
 					wg.Done()
 				}()
-				singleScanData := r.SingleTcpScan(host, port)
+				singleScanData := r.SingleTcpScan(host, host, port)
 				//推送消息队列保存
 				if singleScanData != nil {
 					allScanData = append(allScanData, *singleScanData)
@@ -259,14 +262,14 @@ func (r *Runner) TcpScan(hosts []string, port_list PortList) *[]ScanData {
 	return &allScanData
 }
 
-func (r *Runner) SingleTcpScan(host string, port int) *ScanData {
+func (r *Runner) SingleTcpScan(host string, ip string, port int) *ScanData {
 	var scanner = gonmap.New()
 	scanner.OpenDeepIdentify()
 	status, response := scanner.ScanTimeout(host, port, time.Second*30)
 	if response != nil {
-		single_scan := ScanData{host, port, &status, response, &wap.CrawlerData{}, nil}
+		single_scan := ScanData{ip, host, port, &status, response, &wap.CrawlerData{}, nil}
 		// 获取web指纹
-		if strings.Contains(single_scan.FingerPrint.Service, "https") {
+		if strings.Contains(single_scan.FingerPrint.Service, "https") || strings.Contains(single_scan.FingerPrint.Service, "ssl") {
 			single_scan.URL = "https://" + host
 			if port != 80 && port != 443 {
 				single_scan.URL = single_scan.URL + ":" + strconv.Itoa(port)
@@ -288,7 +291,7 @@ func (r *Runner) SingleTcpScan(host string, port int) *ScanData {
 		for _, v := range single_scan.Apps {
 			apps = append(apps, v.Name)
 		}
-		log.Infoln(single_scan.Ip, single_scan.Port, single_scan.FingerPrint.Service,
+		log.Infoln(single_scan.Host, single_scan.Port, single_scan.FingerPrint.Service,
 			single_scan.Status, single_scan.Title, apps)
 		//开启消息队列保存
 		if r.MqUrl != "" {
@@ -304,7 +307,7 @@ func (r *Runner) SingleTcpScan(host string, port int) *ScanData {
 		return &single_scan
 	} else {
 		if status == gonmap.Open || status == gonmap.NotMatched {
-			single_scan := ScanData{host, port, &status, response, &wap.CrawlerData{}, nil}
+			single_scan := ScanData{ip, host, port, &status, response, &wap.CrawlerData{}, nil}
 			single_scan.URL = "http://" + host
 			if port != 80 && port != 443 {
 				single_scan.URL = single_scan.URL + ":" + strconv.Itoa(port)
@@ -352,4 +355,43 @@ func (r *Runner) OutPortScanJson(scanResult *[]ScanData) error {
 		}
 	}
 	return nil
+}
+
+func (r *Runner) DomainScan(domianIpMap *map[string]string, allScanData *[]ScanData) *[]ScanData {
+	sema := make(chan int, r.Threads)
+	withTimeout, cancelFunc := context.WithTimeout(context.Background(), time.Second*3600)
+	for doamin, ip := range *domianIpMap {
+		for _, scandata := range *allScanData {
+			if scandata.Ip == ip && (strings.Contains(scandata.FingerPrint.Service, "http") || strings.Contains(scandata.FingerPrint.Service, "ssl")) {
+				sema <- 1
+				port := scandata.Port
+				host := doamin
+				aip := ip
+				go func() {
+					defer func() {
+						<-sema
+						wg.Done()
+					}()
+					singleScanData := r.SingleTcpScan(host, aip, port)
+					//推送消息队列保存
+					if singleScanData != nil {
+						*allScanData = append(*allScanData, *singleScanData)
+					}
+				}()
+				wg.Add(1)
+			}
+		}
+	}
+	go func() { //协程监听以上协程是否完成
+		select {
+		case <-withTimeout.Done(): //part1
+			return //结束监听协程
+		default: //part2 等待协程1、协程2执行完毕，执行完毕后就手动取消上下文，停止阻塞
+			wg.Wait()
+			cancelFunc()
+			return //结束监听协程
+		}
+	}()
+	<-withTimeout.Done()
+	return allScanData
 }

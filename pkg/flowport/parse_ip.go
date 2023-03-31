@@ -3,8 +3,11 @@ package flowport
 import (
 	"errors"
 	"net"
+	"regexp"
 	"strconv"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // 192.168.0.1
@@ -69,14 +72,23 @@ func DealHyphen(s string) ([]string, error) {
 
 }
 
-func ParseIps(s string) ([]string, []error) {
+func ParseIps(s string) ([]string, map[string]string, []error) {
 
 	IPstrings := strings.Split(strings.Trim(s, ","), ",")
 	var ips []string
 	var err []error
+	domainIpMap := make(map[string]string)
 
 	for i := 0; i < len(IPstrings); i++ {
-		if strings.Contains(IPstrings[i], "*") {
+		match, _ := regexp.MatchString("[a-zA-Z]+", IPstrings[i])
+		if match {
+			//TODO doamin
+			aip := DnsResolutionA(IPstrings[i])
+			if aip != "" {
+				ips = append(ips, aip)
+				domainIpMap[IPstrings[i]] = aip
+			}
+		} else if strings.Contains(IPstrings[i], "*") {
 			//TODO 192.168.0.*
 			ips_tmp, err_tmp := DealAsterisk(IPstrings[i])
 			err = append(err, err_tmp)
@@ -97,7 +109,8 @@ func ParseIps(s string) ([]string, []error) {
 			ips = append(ips, IPstrings[i])
 		}
 	}
-	return ips, err
+	ips = removeDuplicates((ips))
+	return ips, domainIpMap, err
 }
 
 func filterIps(scanDatas *[]ScanData, maxCount int) *[]string {
@@ -130,4 +143,32 @@ func removeIps(ips []string, rips []string) *[]string {
 		ips = *removeIp(ips, ip)
 	}
 	return &ips
+}
+
+func DnsResolutionA(domain string) string {
+	// 获取域名解析A记录
+	ips, err := net.LookupHost(domain)
+	if err != nil {
+		log.Errorln("域名解析失败:", err)
+		return ""
+	}
+	for _, ip := range ips {
+		if parsedIP := net.ParseIP(ip); parsedIP != nil && parsedIP.To4() != nil {
+			return ip // 只输出 IPv4 地址
+		}
+	}
+	return ""
+}
+
+func removeDuplicates(ips []string) []string {
+	m := make(map[string]bool)
+	result := []string{}
+
+	for _, ip := range ips {
+		if !m[ip] { // 如果 map 中不存在该元素，则添加到结果数组和 map 中
+			result = append(result, ip)
+			m[ip] = true
+		}
+	}
+	return result
 }

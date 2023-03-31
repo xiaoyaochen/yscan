@@ -12,6 +12,7 @@ var Wapp *wap.Wappalyzer
 
 type ScanData struct {
 	Ip             string `json:"ip"`
+	Host           string `json:"host"`
 	Port           int    `json:"port"`
 	*gonmap.Status `json:"status"`
 	*gonmap.Response
