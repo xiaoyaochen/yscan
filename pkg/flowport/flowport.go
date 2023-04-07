@@ -1,13 +1,12 @@
 package flowport
 
 import (
-	"sync"
 	"yscan/pkg/gonmap"
 	"yscan/pkg/sslcert"
 	"yscan/pkg/wap"
 )
 
-var wg sync.WaitGroup
+// var wg sync.WaitGroup
 var Wapp *wap.Wappalyzer
 
 type ScanData struct {

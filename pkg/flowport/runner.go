@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"yscan/pkg/gomasscan"
 	"yscan/pkg/gonmap"
@@ -185,37 +186,30 @@ func (r *Runner) SynScan(hosts []string, port_list PortList) *[]ScanData {
 	bar = progressbar.NewOptions(len(ipports), progressbar.OptionShowIts(),
 		progressbar.OptionShowCount(),
 		progressbar.OptionSetDescription("SYN-TCPSCAINING"))
-	withTimeout, cancelFunc := context.WithTimeout(context.Background(), time.Second*3600)
+	withTimeout, cancelFunc := context.WithTimeout(context.Background(), time.Second*300)
+	defer cancelFunc()
+	var wg sync.WaitGroup
 	for _, ipport := range ipports {
+		wg.Add(1)
 		sema <- 1
-		port := ipport.port
-		host := ipport.ip
-		go func() {
+		go func(ctx context.Context, wg *sync.WaitGroup, sema chan int, ipport ipPort) {
 			defer func() {
 				bar.Add(1)
 				<-sema
 				wg.Done()
+				if ctx.Err() != nil {
+					log.Errorf("Work %s:%s aborted due to timeout\n", ipport.ip, ipport.port)
+					return
+				}
 			}()
-			singleScanData := r.SingleTcpScan(host, host, port)
+			singleScanData := r.SingleTcpScan(ipport.ip, ipport.ip, ipport.port)
 			if singleScanData != nil {
 				allScanData = append(allScanData, *singleScanData)
 			}
-		}()
-		wg.Add(1)
+		}(withTimeout, &wg, sema, ipport)
 	}
-	go func() { //协程监听以上协程是否完成
-		select {
-		case <-withTimeout.Done(): //part1
-			return //结束监听协程
-		default: //part2 等待协程1、协程2执行完毕，执行完毕后就手动取消上下文，停止阻塞
-			wg.Wait()
-			cancelFunc()
-			return //结束监听协程
-		}
-	}()
-	<-withTimeout.Done()
+	wg.Wait()
 	return &allScanData
-
 }
 
 func (r *Runner) TcpScan(hosts []string, port_list PortList) *[]ScanData {
@@ -226,39 +220,33 @@ func (r *Runner) TcpScan(hosts []string, port_list PortList) *[]ScanData {
 	bar := progressbar.NewOptions(count, progressbar.OptionShowIts(),
 		progressbar.OptionShowCount(),
 		progressbar.OptionSetDescription("TCPSCAINING"))
-	withTimeout, cancelFunc := context.WithTimeout(context.Background(), time.Second*3600)
+	withTimeout, cancelFunc := context.WithTimeout(context.Background(), time.Second*300)
+	defer cancelFunc()
+	var wg sync.WaitGroup
 	for _, port := range port_list {
 		for _, host := range hosts {
+			wg.Add(1)
 			sema <- 1
-			port := port
-			host := host
 			// go GoNmapScan(scanner, host, port, time.Second*30, sema)
-			go func() {
+			go func(ctx context.Context, wg *sync.WaitGroup, sema chan int, host string, port int) {
 				defer func() {
 					bar.Add(1)
 					<-sema
 					wg.Done()
+					if ctx.Err() != nil {
+						log.Warnf("Work %s:%d aborted due to timeout\n", host, port)
+						return
+					}
 				}()
 				singleScanData := r.SingleTcpScan(host, host, port)
 				//推送消息队列保存
 				if singleScanData != nil {
 					allScanData = append(allScanData, *singleScanData)
 				}
-			}()
-			wg.Add(1)
+			}(withTimeout, &wg, sema, host, port)
 		}
 	}
-	go func() { //协程监听以上协程是否完成
-		select {
-		case <-withTimeout.Done(): //part1
-			return //结束监听协程
-		default: //part2 等待协程1、协程2执行完毕，执行完毕后就手动取消上下文，停止阻塞
-			wg.Wait()
-			cancelFunc()
-			return //结束监听协程
-		}
-	}()
-	<-withTimeout.Done()
+	wg.Wait()
 	return &allScanData
 }
 
@@ -359,39 +347,32 @@ func (r *Runner) OutPortScanJson(scanResult *[]ScanData) error {
 
 func (r *Runner) DomainScan(domianIpMap *map[string]string, allScanData *[]ScanData) *[]ScanData {
 	sema := make(chan int, r.Threads)
-	withTimeout, cancelFunc := context.WithTimeout(context.Background(), time.Second*3600)
+	withTimeout, cancelFunc := context.WithTimeout(context.Background(), time.Second*300)
+	defer cancelFunc()
+	var wg sync.WaitGroup
 	for doamin, ip := range *domianIpMap {
 		for _, scandata := range *allScanData {
 			if scandata.Ip == ip && (strings.Contains(scandata.FingerPrint.Service, "http") || strings.Contains(scandata.FingerPrint.Service, "ssl")) {
+				wg.Add(1)
 				sema <- 1
-				port := scandata.Port
-				host := doamin
-				aip := ip
-				go func() {
+				go func(ctx context.Context, wg *sync.WaitGroup, sema chan int, host string, port int, ip string) {
 					defer func() {
 						<-sema
 						wg.Done()
+						if ctx.Err() != nil {
+							log.Warnf("Work %s:%d aborted due to timeout\n", host, port)
+							return
+						}
 					}()
-					singleScanData := r.SingleTcpScan(host, aip, port)
+					singleScanData := r.SingleTcpScan(host, ip, port)
 					//推送消息队列保存
 					if singleScanData != nil {
 						*allScanData = append(*allScanData, *singleScanData)
 					}
-				}()
-				wg.Add(1)
+				}(withTimeout, &wg, sema, doamin, scandata.Port, ip)
 			}
 		}
 	}
-	go func() { //协程监听以上协程是否完成
-		select {
-		case <-withTimeout.Done(): //part1
-			return //结束监听协程
-		default: //part2 等待协程1、协程2执行完毕，执行完毕后就手动取消上下文，停止阻塞
-			wg.Wait()
-			cancelFunc()
-			return //结束监听协程
-		}
-	}()
-	<-withTimeout.Done()
+	wg.Wait()
 	return allScanData
 }
