@@ -50,7 +50,26 @@ func (r *Runner) InitRunner() {
 	if r.MqUrl != "" {
 		r.Mq = mq.NewMqProducer("portscan", r.MqUrl)
 	}
-	if r.Ip != "" {
+	if r.Ip == "-" {
+		reader := bufio.NewReader(os.Stdin)
+		var lines []string
+		for {
+			line, err := reader.ReadString('\n') //注意是字符，换行符。
+			line = strings.Replace(line, " ", "", -1)
+			// 去除换行符
+			line = strings.Replace(line, "\n", "", -1)
+			line = strings.Replace(line, "\r", "", -1)
+			lines = append(lines, line)
+			if err == io.EOF {
+				break
+			}
+			if err != nil { //错误处理
+				log.Errorf(" error:%v", err)
+				return
+			}
+		}
+		r.Ips = strings.Join(lines, ",")
+	}else if r.Ip != "" {
 		r.Ips = r.Ip
 	} else if r.File != "" {
 		fileobj, err := os.Open(r.File)
