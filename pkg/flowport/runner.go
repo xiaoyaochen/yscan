@@ -125,7 +125,7 @@ func (r *Runner) PortAnalyzerScan() (*[]ScanData, error) {
 		r.DomainScan(&domainIpMap, &allScanData)
 		r.OutPortScanJson(&allScanData)
 		return &allScanData, nil
-	} else {
+	} else if r.Mode == 0 {
 		//mode 不等于1 先做top50 tcp扫描然后无状态扫描再tcp扫描
 		scanPort := parsePortList(r.Port)
 		if len(scanPort) <= 50 {
@@ -144,6 +144,14 @@ func (r *Runner) PortAnalyzerScan() (*[]ScanData, error) {
 			r.OutPortScanJson(&allScanData)
 			return &allScanData, nil
 		}
+	} else {
+		//mode 不等于1 先做top50 tcp扫描然后无状态扫描再tcp扫描
+		scanPort := parsePortList(r.Port)
+		allScanData := *r.TcpScan(hostList, scanPort)
+		r.DomainScan(&domainIpMap, &allScanData)
+		r.OutPortScanJson(&allScanData)
+		return &allScanData, nil
+		
 
 	}
 }
@@ -239,7 +247,7 @@ func (r *Runner) TcpScan(hosts []string, port_list PortList) *[]ScanData {
 	bar := progressbar.NewOptions(count, progressbar.OptionShowIts(),
 		progressbar.OptionShowCount(),
 		progressbar.OptionSetDescription("TCPSCAINING"))
-	withTimeout, cancelFunc := context.WithTimeout(context.Background(), time.Second*300)
+	withTimeout, cancelFunc := context.WithTimeout(context.Background(), time.Second*180)
 	defer cancelFunc()
 	var wg sync.WaitGroup
 	for _, port := range port_list {
@@ -271,7 +279,7 @@ func (r *Runner) TcpScan(hosts []string, port_list PortList) *[]ScanData {
 
 func (r *Runner) SingleTcpScan(host string, ip string, port int) *ScanData {
 	var scanner = gonmap.New()
-	scanner.OpenDeepIdentify()
+	// scanner.OpenDeepIdentify()
 	status, response := scanner.ScanTimeout(host, port, time.Second*30)
 	if response != nil {
 		single_scan := ScanData{ip, host, port, &status, response, &wap.CrawlerData{}, nil}
@@ -313,24 +321,34 @@ func (r *Runner) SingleTcpScan(host string, ip string, port int) *ScanData {
 		}
 		return &single_scan
 	} else {
-		if status == gonmap.Open || status == gonmap.NotMatched {
+		// log.Println(status , port)
+		if status == gonmap.Open || status == gonmap.NotMatched || status == gonmap.Unknown {
 			single_scan := ScanData{ip, host, port, &status, response, &wap.CrawlerData{}, nil}
 			single_scan.URL = "http://" + host
 			if port != 80 && port != 443 {
 				single_scan.URL = single_scan.URL + ":" + strconv.Itoa(port)
 			}
-			single_scan.RequestGet(r.Wapp, 10, "")
 			// 获取证书
-			if single_scan.TLS {
-				single_scan.SslCert = sslcert.GetCert(host, port)
-			}
-
-			apps := []string{}
-			for _, v := range single_scan.Apps {
-				apps = append(apps, v.Name)
-			}
-			log.Infoln(single_scan.Ip, single_scan.Port, single_scan.FingerPrint.Service,
+			if response != nil {
+				single_scan.RequestGet(r.Wapp, 8, "")
+				if single_scan.TLS {
+					single_scan.SslCert = sslcert.GetCert(host, port)
+				}
+				apps := []string{}
+				for _, v := range single_scan.Apps {
+					apps = append(apps, v.Name)
+				}
+				log.Infoln(single_scan.Ip, single_scan.Port, single_scan.FingerPrint.Service,
 				single_scan.Status, single_scan.Title, apps)
+			}else{
+				single_scan.RequestGet(r.Wapp, 3, "")
+				apps := []string{}
+				for _, v := range single_scan.Apps {
+					apps = append(apps, v.Name)
+				}
+				log.Infoln(single_scan.Ip, single_scan.Port, "",
+					single_scan.Status, single_scan.Title, apps)
+			}
 			//开启消息队列保存
 			if r.MqUrl != "" {
 				body, err := json.Marshal(single_scan)
@@ -366,7 +384,7 @@ func (r *Runner) OutPortScanJson(scanResult *[]ScanData) error {
 
 func (r *Runner) DomainScan(domianIpMap *map[string]string, allScanData *[]ScanData) *[]ScanData {
 	sema := make(chan int, r.Threads)
-	withTimeout, cancelFunc := context.WithTimeout(context.Background(), time.Second*300)
+	withTimeout, cancelFunc := context.WithTimeout(context.Background(), time.Second*180)
 	defer cancelFunc()
 	var wg sync.WaitGroup
 	for doamin, ip := range *domianIpMap {
@@ -395,3 +413,4 @@ func (r *Runner) DomainScan(domianIpMap *map[string]string, allScanData *[]ScanD
 	wg.Wait()
 	return allScanData
 }
+
