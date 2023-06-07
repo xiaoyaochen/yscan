@@ -21,7 +21,7 @@ ___.__.  ______  ____  _____     ____
 `
 
 func main() {
-	fmt.Printf(logo)
+	// fmt.Printf(logo)
 	startTime := time.Now()
 	//获取参数
 	var runner flowport.Runner
@@ -29,13 +29,13 @@ func main() {
 	flag.StringVar(&runner.Technologies, "technologies", "", "Path to override default technologies.json file")
 	flag.StringVar(&runner.File, "file", "", "Ip file for Scan")
 	flag.StringVar(&runner.Rpcaddr, "rpcaddr", "", "rpc listen address")
-	flag.StringVar(&runner.Ip, "ip", "", "Ip for Scan")
+	flag.StringVar(&runner.Ip, "ip", "", "Ip for Scan , `-` for stdin")
 	flag.StringVar(&runner.Port, "port", "", "Port for Scan,default（top1000）")
 	flag.IntVar(&runner.TimeoutSeconds, "timeout", 30, "Timeout in seconds for TCP Scan")
 	flag.IntVar(&runner.Threads, "threads", 100, "Threads for TCP Scan")
 	flag.IntVar(&runner.FilterCount, "fcount", 15, "Ip top50 tcp scan open > fcount to filter")
 	flag.IntVar(&runner.Rate, "rate", 1000, "rate for Asyn Scan (masscan SYN scan)")
-	flag.IntVar(&runner.Mode, "mode", 0, "0:default scan(top50 tcp->Async->tcp), 1:Async Scan(Async->tcp)")
+	flag.IntVar(&runner.Mode, "mode", 0, "0:default scan(top50 tcp->Async->tcp), 1:Async Scan(Async->tcp) 2:(pure tcp scan )")
 	flag.StringVar(&runner.OutJson, "json", "", "Out json file")
 	flag.StringVar(&runner.MqUrl, "mq", "", "Out to Mq(redis、rabbitmq)")
 	flag.BoolVar(&help, "h", false, "Help")

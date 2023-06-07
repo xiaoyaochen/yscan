@@ -74,9 +74,18 @@ func (n *Nmap) Scan(ip string, port int) (status Status, response *Response) {
 	status, response = n.getRealResponse(ip, port, n.timeout, firstProbe)
 	if status == Closed || status == Matched {
 		return status, response
-	}
+	} 
+	
 	otherProbes := probeNames[1:]
-	return n.getRealResponse(ip, port, 2*time.Second, otherProbes...)
+	// time.Sleep(time.Millisecond * 500)
+	status, response =  n.getRealResponse(ip, port, 2*time.Second, otherProbes...)
+	if status == Closed || status == Matched {
+		return status, response
+	} else if status == Unknown {
+		// logger.Println(status , port )
+		return status , response
+	}
+	return status, response
 }
 
 func (n *Nmap) getRealResponse(host string, port int, timeout time.Duration, probes ...string) (status Status, response *Response) {
@@ -162,6 +171,10 @@ func (n *Nmap) getResponse(host string, port int, tls bool, timeout time.Duratio
 		}
 		if p.protocol == "UDP" && strings.Contains(err.Error(), "refused") {
 			return Closed, nil
+		}
+		if strings.Contains(err.Error(), "STEP3:response is empty") {
+			// logger.Println(text , port)
+			return Unknown, nil
 		}
 		return Open, nil
 	}

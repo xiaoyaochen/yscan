@@ -47,9 +47,12 @@ func (p *probe) scan(host string, port int, tls bool, timeout time.Duration, siz
 		text, err := simplenet.Send(p.protocol, false, uri, p.sendRaw, timeout, size)
 		return text, false, err
 	}
+	if strings.Contains(err.Error(), "STEP3:response is empty") {
+		return text, false, err
+	}
 	return text, tls, err
-}
 
+}
 func (p *probe) match(s string) *FingerPrint {
 	var f = &FingerPrint{}
 	var softFilter string
