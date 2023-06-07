@@ -388,7 +388,8 @@ func (r *Runner) DomainScan(domianIpMap *map[string]string, allScanData *[]ScanD
 	var wg sync.WaitGroup
 	for doamin, ip := range *domianIpMap {
 		for _, scandata := range *allScanData {
-			if scandata.Ip == ip && (strings.Contains(scandata.FingerPrint.Service, "http") || strings.Contains(scandata.FingerPrint.Service, "ssl")) {
+			// if scandata.Ip == ip && (strings.Contains(scandata.FingerPrint.Service, "http") || strings.Contains(scandata.FingerPrint.Service, "ssl")) {
+			if scandata.URL != "" && scandata.Ip == ip {
 				wg.Add(1)
 				sema <- 1
 				go func(ctx context.Context, wg *sync.WaitGroup, sema chan int, host string, port int, ip string) {
