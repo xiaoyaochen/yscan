@@ -307,8 +307,13 @@ func AnalyzePage(crawlerdata *CrawlerData, wapp *Wappalyzer) (err error) {
 		if app.URL != nil {
 			analyzeURL(app, crawlerdata.ResURL, detectedApplications)
 		}
-		if app.HTML != nil {
-			analyzeHTML(app, crawlerdata.HTML, detectedApplications)
+		htmlLen := len(crawlerdata.HTML)
+		if htmlLen > 0 && app.HTML != nil {
+			if htmlLen < 6000 {
+				analyzeHTML(app, crawlerdata.HTML, detectedApplications)
+			} else {
+				analyzeHTML(app, crawlerdata.HTML[:3000]+crawlerdata.HTML[htmlLen-3000:], detectedApplications)
+			}
 		}
 		if len(crawlerdata.Headers) > 0 && app.Headers != nil {
 			analyzeHeaders(app, crawlerdata.Headers, detectedApplications)

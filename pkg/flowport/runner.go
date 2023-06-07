@@ -69,7 +69,7 @@ func (r *Runner) InitRunner() {
 			}
 		}
 		r.Ips = strings.Join(lines, ",")
-	}else if r.Ip != "" {
+	} else if r.Ip != "" {
 		r.Ips = r.Ip
 	} else if r.File != "" {
 		fileobj, err := os.Open(r.File)
@@ -151,7 +151,6 @@ func (r *Runner) PortAnalyzerScan() (*[]ScanData, error) {
 		r.DomainScan(&domainIpMap, &allScanData)
 		r.OutPortScanJson(&allScanData)
 		return &allScanData, nil
-		
 
 	}
 }
@@ -225,7 +224,7 @@ func (r *Runner) SynScan(hosts []string, port_list PortList) *[]ScanData {
 				<-sema
 				wg.Done()
 				if ctx.Err() != nil {
-					log.Errorf("Work %s:%s aborted due to timeout\n", ipport.ip, ipport.port)
+					log.Warnf("Work %s:%d aborted due to timeout\n", ipport.ip, ipport.port)
 					return
 				}
 			}()
@@ -339,8 +338,8 @@ func (r *Runner) SingleTcpScan(host string, ip string, port int) *ScanData {
 					apps = append(apps, v.Name)
 				}
 				log.Infoln(single_scan.Ip, single_scan.Port, single_scan.FingerPrint.Service,
-				single_scan.Status, single_scan.Title, apps)
-			}else{
+					single_scan.Status, single_scan.Title, apps)
+			} else {
 				single_scan.RequestGet(r.Wapp, 3, "")
 				apps := []string{}
 				for _, v := range single_scan.Apps {
@@ -413,4 +412,3 @@ func (r *Runner) DomainScan(domianIpMap *map[string]string, allScanData *[]ScanD
 	wg.Wait()
 	return allScanData
 }
-
